@@ -1,0 +1,6 @@
+.pi/
+bin/
+agent/agents/
+agent/sessions/
+agent/auth.json
+agent/run-history.jsonl

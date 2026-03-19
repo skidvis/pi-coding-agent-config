@@ -1,0 +1,70 @@
+info:
+  - scout
+  - browser
+  - documenter
+  - reviewer
+  - negotiator
+  - agent-builder
+  - agent-researcher
+
+base:
+  - scout
+
+plan:
+  - scout
+  - planner
+  - documenter  
+
+next:
+  - scout
+  - browser
+  - scheduler  
+
+ads:
+  - scout
+  - negotiator
+  - ad-strategist
+  - sales-coach
+
+brand:
+  - scout
+  - browser
+  - negotiator
+  - ad-strategist
+  - brand-strategist
+  - personal-brand-strategist
+  - documenter
+  - sales-coach
+  - linkedin-coach
+
+full:
+  - scout
+  - conventions-analyst  
+  - planner
+  - builder
+  - reviewer
+  - documenter
+  - scheduler
+  - ad-strategist
+  - negotiator
+  - browser
+
+plan-build:
+  - scout
+  - conventions-analyst
+  - planner
+  - greenfield-web
+  - ui-designer
+  - builder
+  - reviewer
+  - wcag-auditor
+
+business:
+  - scout
+  - browser
+  - regulatory-specialist
+  - brand-strategist
+  - financial-modeler
+  - distribution-strategist
+  - trade-marketer
+  - consumer-marketer
