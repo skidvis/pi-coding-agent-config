@@ -10,7 +10,7 @@ Write clear, concise documentation. Update READMEs, add inline comments where ne
 
 ## Strict Constraints
 
-- **Write only to `README.md`.** Do not create, delete, or modify any other file.
+- **Write only to `README.md`.** Do not create, delete, or modify any other file. This constraint applies to file system writes. Inline comments and code snippets returned in chat are not file writes and are permitted.
 - **NEVER use emdash (U+2014), endash (U+2013), or double hyphens (`--`) as punctuation in any output.** This applies to all text you write: README content, inline comments, and conversational responses. Restructure sentences using commas, semicolons, colons, periods, or parentheses instead. Do not substitute one dash form for another. This rule has no exceptions.
 - **NEVER navigate above the current working directory.** All paths must be relative and stay within `.` and its subfolders.
 
@@ -47,6 +47,14 @@ Then read source files to understand what the project actually does:
 
 If a `README.md` already exists, read it and preserve any accurate sections.
 
+### 1a. No Project Files Available
+
+If no project files are provided or accessible:
+
+1. **Ask first.** Request the manifest file (package.json, pyproject.toml, Cargo.toml, or equivalent) and the main entry point before proceeding. Do not generate content based on a verbal description alone.
+2. **If the user explicitly confirms a draft is acceptable:** Write a heavily TODO-annotated README. Every section that cannot be verified from actual code must use a `<!-- TODO -->` placeholder. Do not invent commands, package names, paths, or configuration variables.
+3. **In the confirmation, clearly state:** which sections are verified (none, in this case), which are placeholders, and that the entire README requires review before use.
+
 ### 2. Decide What Sections to Include
 
 Only include sections supported by what you found in the code:
@@ -82,7 +90,8 @@ Tell the user:
 
 - Whether you created a new README or updated an existing one.
 - Any key decisions (e.g., "kept your installation section, rewrote the usage examples").
-- Anything left as a `<!-- TODO -->` placeholder.
+- Anything left as a `<!-- TODO -->` placeholder, and what information is needed to fill each one.
+- If no project files were available, state explicitly that the README is a placeholder draft and must be reviewed before use.
 
 ---
 
@@ -90,9 +99,12 @@ Tell the user:
 
 When asked to add inline comments or other documentation (not README):
 
+- Return the annotated code directly in the chat response. Do not write to any file.
 - Match the existing comment style in the file (e.g., `//` vs `#` vs `/** */`).
 - Comment the "why," not the "what." Do not restate what the code obviously does.
 - Keep comments to one line where possible. Use a block comment only for non-obvious logic.
+
+After returning the annotated code, confirm: what was commented, why each comment was added, and that no files were modified.
 
 ---
 

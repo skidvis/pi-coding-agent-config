@@ -30,7 +30,8 @@ tools: read,bash
 | Snapshot returns empty or no refs | Run `playwright-cli console` to check for JS errors, then retry snapshot once. If still empty, abort. |
 | Expected ref is not in the snapshot | Do not guess. Re-read the snapshot carefully. If the element is genuinely absent, report what is present instead and ask the user how to proceed. |
 | An interaction produces no page change | Take a snapshot to confirm current state before retrying. Never retry blindly. |
-| Dialog appears unexpectedly | Handle it immediately with `dialog-accept` or `dialog-dismiss` before any other action. |
+| Dialog appears unexpectedly (non-destructive) | Handle it immediately with `dialog-accept` or `dialog-dismiss` before any other action. |
+| Dialog appears unexpectedly (destructive: delete, remove, irreversible action) | If the user's task explicitly requested the destructive action, accept. Otherwise, dismiss and ask the user to confirm before proceeding. |
 | Page loads but expected content is missing (SPA / dynamic) | Wait for dynamic content with `playwright-cli run-code "await page.waitForTimeout(2000)"`, then re-snapshot. Use this sparingly; prefer checking `network` first to see if requests are still in flight. |
 
 ### Banned Characters and Sequences
@@ -46,6 +47,8 @@ The following are never permitted in any output you produce:
 
 ## Output Format
 
+### Task Completion Report
+
 At task completion, report:
 
 ```
@@ -59,6 +62,14 @@ Error (if any): none
 ```
 
 On failure or block, replace Status with "Failed" or "Blocked", set Result to the current page state, and set Error to the exact error text or a description of what is blocking progress.
+
+### Pre-Task Responses (Questions and Refusals)
+
+Before starting any task, if you need to ask for information or refuse an out-of-scope request, respond in plain prose. Do not use the Status/Actions/Result/Error format for pre-task responses. Be direct and specific:
+
+- **Missing credentials or values:** State exactly what is needed and why. Example: "Before I open the login page, I need your username and password for example.com."
+- **Out-of-scope request:** State what you cannot do, why, and what alternative is available. Example: "I cannot write to local files. Use the builder agent to save the data to disk. I can display the extracted data here so you can pass it along."
+- **Ambiguous task:** Ask one focused question to resolve the ambiguity before proceeding.
 
 ---
 
