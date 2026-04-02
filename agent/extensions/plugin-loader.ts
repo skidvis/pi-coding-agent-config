@@ -5,6 +5,8 @@
  * from <agentDir>/plugins/<n>/index.ts (or <n>.ts)
  *
  * Uses getAgentDir() so it respects PI_CODING_AGENT_DIR.
+ * 
+ * Author: skidvis
  *
  * Usage:
  *   PI_PLUGINS=multi-team-chat pi

@@ -3,17 +3,14 @@
  *
  * The primary agent has NO codebase tools. It can ONLY delegate work
  * to 3 specialist subagents via the `dispatch_agent` tool:
- *   - researcher   (read,grep,find,ls)
+ *   - researcher   (read,write,grep,find,ls)
  *   - implementer  (read,write,edit,bash)
- *   - verifier     (read,grep,find,ls,bash)
+ *   - verifier     (read,write,grep,find,ls,bash)
  *
  * Four-phase workflow: Research → Synthesis → Implementation → Verification
  * Shared scratchpad at .pi/scratchpad/ for cross-agent knowledge sharing.
- *
- * Commands:
- *   /agents-list          — list loaded agents
- *   /agents-grid <1-6>    — set grid column count
- *
+ * 
+ * Author: skidvis
  * Usage: pi -e extensions/coordinator.ts
  */
 
@@ -95,10 +92,10 @@ export default function (pi: ExtensionAPI) {
 		allAgentDefs = [
 			{
 				name: "researcher",
-				description: "Read-only codebase investigator. Explores structure, reads files, greps for patterns, and writes findings to the scratchpad.",
-				tools: "read,grep,find,ls",
+				description: "Read-only codebase investigator. Explores structure, reads files, greps for patterns, and writes findings to the scratchpad. Never modifies source files.",
+				tools: "read,write,grep,find,ls",
 				systemPrompt: `You are a researcher agent. You investigate codebases and write findings.
-You have READ-ONLY access. Never modify files (except writing to the scratchpad directory you are given).
+You have READ-ONLY access to the codebase. Never modify source files (you may only write to the scratchpad directory you are given).
 When dispatched, focus on your assigned investigation angle only.
 Write your findings to the scratchpad file path specified in your task.
 Be specific: include file paths, line numbers, function names, and exact code snippets.`,
@@ -117,7 +114,7 @@ After implementing, write a brief summary of what you changed to the scratchpad 
 			{
 				name: "verifier",
 				description: "Quality gate. Verifies that implemented changes actually work. Runs tests, checks types, reads diffs. Never the same agent that implemented.",
-				tools: "read,grep,find,ls,bash",
+				tools: "read,write,grep,find,ls,bash",
 				systemPrompt: `You are a verifier agent. You verify that code changes work correctly.
 You are NOT the implementer — approach verification with genuine skepticism.
 Verification means PROVING the code works, not confirming it exists.
@@ -528,22 +525,6 @@ Write your verification report to the scratchpad file path specified in your tas
 		},
 	});
 
-	// ── Commands ─────────────────────────────────
-
-	pi.registerCommand("agents-list", {
-		description: "List all loaded agents",
-		handler: async (_args, _ctx) => {
-			widgetCtx = _ctx;
-			const names = Array.from(agentStates.values())
-				.map(s => {
-					const session = s.sessionFile ? "resumed" : "new";
-					return `${displayName(s.def.name)} (${s.status}, ${session}, runs: ${s.runCount}): ${s.def.description}`;
-				})
-				.join("\n");
-			_ctx.ui.notify(names || "No agents loaded", "info");
-		},
-	});
-
 	// ── System Prompt Override ───────────────────
 
 	pi.on("before_agent_start", async (_event, _ctx) => {
@@ -724,26 +705,5 @@ ${agentCatalog}`,
 			"info",
 		);
 		updateWidget();
-
-		// Footer: model | team | context bar
-		// _ctx.ui.setFooter((_tui, theme, _footerData) => ({
-		// 	dispose: () => {},
-		// 	invalidate() {},
-		// 	render(width: number): string[] {
-		// 		const model = _ctx.model?.id || "no-model";
-		// 		const usage = _ctx.getContextUsage();
-		// 		const pct = usage ? usage.percent : 0;
-		// 		const filled = Math.round(pct / 10);
-		// 		const bar = "#".repeat(filled) + "-".repeat(10 - filled);
-
-		// 		const left = theme.fg("dim", ` ${model}`) +
-		// 			theme.fg("muted", " · ") +
-		// 			theme.fg("accent", activeTeamName);
-		// 		const right = theme.fg("dim", `[${bar}] ${Math.round(pct)}% `);
-		// 		const pad = " ".repeat(Math.max(1, width - visibleWidth(left) - visibleWidth(right)));
-
-		// 		return [truncateToWidth(left + pad + right, width)];
-		// 	},
-		// }));
 	});
 }
