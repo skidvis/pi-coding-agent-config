@@ -1,137 +1,238 @@
-# pi agent config
+# .pi — Personal pi Agent Configuration
 
-Personal configuration layer for [pi](https://github.com/mariozechner/pi), a CLI-based coding agent by Mario Zechner. Rather than using pi as a single assistant, this config turns it into a **dispatcher** that routes tasks to specialized subagents, each with its own tool permissions, system prompt, and persistent session.
+Personal configuration layer for [pi](https://github.com/mariozechner/pi), a CLI coding agent by Mario Zechner. This config transforms pi from a single assistant into a dispatcher-based multi-agent system: a main orchestrator routes tasks to specialized subagents, each with its own tool permissions, system prompt, and persistent session.
 
 ## Table of Contents
 
 - [How It Works](#how-it-works)
-- [Structure](#structure)
+- [Orchestrator Modes](#orchestrator-modes)
+- [Directory Structure](#directory-structure)
 - [Agent Definition Format](#agent-definition-format)
-- [Teams](#teams)
-- [Included Agents](#included-agents)
-- [Adding a New Agent](#adding-a-new-agent)
-- [Adding a New Team](#adding-a-new-team)
+- [Named Teams](#named-teams)
+- [Agent Roster](#agent-roster)
+- [Extensions](#extensions)
 - [Global Rules](#global-rules)
+- [Skills](#skills)
+- [Adding Agents and Teams](#adding-agents-and-teams)
 - [Dependencies](#dependencies)
 
 ---
 
 ## How It Works
 
-### Dispatcher (agent-team.ts)
+The main pi session becomes a pure dispatcher. It has no direct codebase tools (`read`, `write`, `grep`, etc.). All work flows through the `dispatch_agent` tool, which spawns subagents as `pi --mode json` subprocesses.
 
-When pi loads, the main agent becomes a pure dispatcher:
+Each subagent:
 
-1. Scans agent `.md` files from `agents/`, `.claude/agents/`, `.pi/agents/`, and `~/.pi/agent/agents/`
-2. Parses `teams.yaml` for named group compositions
-3. Locks the main agent's tools to only `dispatch_agent` and `askUserQuestion`
-4. Renders a live grid widget showing each agent's status (idle / running / done / error), elapsed time, and last output
-5. Each `dispatch_agent` call spawns a `pi --mode json` subprocess with the target agent's tools and prompt
-6. Agent sessions persist as `.json` files for cross-invocation memory
-7. Optionally opens a tmux split pane tailing the live log
+- Runs with its own tool set defined in its `.md` frontmatter
+- Persists its session as a `.json` file in `.pi/agent-sessions/` for cross-invocation memory
+- Streams output back to the orchestrator in real time
 
-### Global Rules (pi-rules.ts)
-
-Scans `rules/*.md` and appends each file path to every agent's system prompt. This enforces global conventions across all agents without duplication.
+The orchestrator renders a live grid widget in the terminal showing each agent's status (idle / running / done / error), elapsed time, and last line of output. If `$TMUX` is set, a split pane opens to tail the live log.
 
 ---
 
-## Structure
+## Orchestrator Modes
+
+Two plugins are available. Load one via `PI_PLUGINS`:
+
+### Agent Team (`plugins/agent-team.ts`)
+
+General-purpose dispatcher. Loads agent definitions from `.md` files, reads named team compositions from `agents/teams.yaml`, and presents a team-selector on boot. Only members of the active team are available for dispatch.
+
+```bash
+PI_PLUGINS=agent-team pi
+```
+
+Commands:
+
+| Command | Description |
+|---|---|
+| `/agents-team` | Switch the active team |
+| `/agents-list` | List loaded agents and their current status |
+| `/agents-grid <1-6>` | Set the grid column count |
+
+### Coordinator (`plugins/coordinator.ts`)
+
+Workflow-enforcing orchestrator. Hardcodes a 3-agent team (Researcher, Implementer, Verifier) and enforces a four-phase workflow for every non-trivial task:
+
+1. **Research** — dispatches researchers in parallel to investigate from multiple angles; each writes findings to `.pi/scratchpad/`
+2. **Synthesis** — the coordinator personally reads all research outputs and writes an implementation spec to `.pi/scratchpad/`
+3. **Implementation** — dispatches implementers serially per file set, referencing the spec
+4. **Verification** — dispatches a different agent to prove the changes work
+
+The scratchpad is wiped at the start of each session. Files follow the naming convention `research-<topic>.md`, `spec-<topic>.md`, `verify-<topic>.md`.
+
+```bash
+PI_PLUGINS=coordinator pi
+```
+
+---
+
+## Directory Structure
 
 ```
 ~/.pi/
 ├── .gitignore
+├── README.md
 ├── bin/
-│   ├── fd                    # Bundled fd binary
-│   └── rg                    # Bundled ripgrep binary
+│   ├── fd                      # Bundled fd binary
+│   └── rg                      # Bundled ripgrep binary
 └── agent/
-    ├── README.md
-    ├── settings.json         # Global pi settings
-    ├── models.json           # Custom model provider definitions (Ollama)
-    ├── auth.json             # API keys (gitignored)
-    ├── run-history.jsonl     # Session history (gitignored)
+    ├── settings.json            # Default model, packages, theme, skills
+    ├── models.json              # Custom model providers (Ollama)
+    ├── auth.json                # API keys (gitignored)
+    ├── run-history.jsonl        # Session history (gitignored)
     ├── extensions/
-    │   ├── agent-team.ts     # Dispatcher orchestrator with live grid dashboard
-    │   └── pi-rules.ts       # Injects rules/*.md into every agent system prompt
+    │   ├── pi-rules.ts          # Injects rules/*.md into every agent system prompt
+    │   └── plugin-loader.ts     # Loads plugins via PI_PLUGINS env var
+    ├── plugins/
+    │   ├── agent-team.ts        # Agent Team orchestrator
+    │   └── coordinator.ts       # Coordinator orchestrator
     ├── agents/
-    │   ├── teams.yaml        # Named team compositions
-    │   └── *.md              # 25+ individual agent definitions
+    │   ├── teams.yaml           # Named team compositions
+    │   └── *.md                 # 35+ agent definition files
     ├── rules/
-    │   └── system-prompt.md  # Global rules injected into all agents
-    └── skills/
+    │   └── system-prompt.md     # Global rules injected into all agents
+    └── sessions/                # Pi session storage (gitignored)
 ```
+
+Runtime directories (gitignored, created automatically):
+
+- `.pi/agent-sessions/` — subagent session JSON files (wiped on each session start)
+- `.pi/scratchpad/` — coordinator shared working memory (wiped on each session start)
 
 ---
 
 ## Agent Definition Format
 
-Each agent is a Markdown file with YAML frontmatter:
+Each agent is a Markdown file with YAML frontmatter. Place it in `agents/`. It will be auto-discovered on the next session with no registration step required.
 
 ```markdown
 ---
 name: kebab-case-name
-description: One sentence describing the agent
+description: One sentence describing the agent's role and scope.
 tools: read,grep,find,ls
-thinking: high  # optional
+thinking: high
 ---
 
 # Agent Name: Role
 
-{Full system prompt...}
+Full system prompt...
 ```
 
-Place the file in `agents/`. It will be auto-discovered on the next pi session.
+The `tools` field controls what the subagent subprocess is allowed to call. Common values: `read,grep,find,ls` (read-only), `read,write,edit,bash` (full access).
+
+`thinking` is optional. Valid values: `low`, `minimal`, `high`.
+
+Agent definitions are scanned from these directories in order:
+
+1. `{cwd}/agents/`
+2. `{cwd}/.claude/agents/`
+3. `{cwd}/.pi/agents/`
+4. `~/.pi/agent/agents/` (global)
+
+The first file with a given `name` wins.
 
 ---
 
-## Teams
+## Named Teams
 
-Named team compositions are defined in `agents/teams.yaml`. A team is a named list of agent names. Example teams include `dev`, `brand`, and `info`.
-
-To add a team, append an entry to `teams.yaml` with a name and a list of agent names.
-
----
-
-## Included Agents
-
-| Agent | Description |
-|---|---|
-| `browser` | Browser automation via playwright-cli. |
-| `builder` | Implements code from a plan (read, write, edit, bash). |
-| `conventions-analyst` | Reverse-engineers codebase patterns into a conventions reference. |
-| `documenter` | README and inline documentation. |
-| `greenfield-web` | Scaffolds Astro + Vue + Tailwind projects from scratch. |
-| `planner` | Read-only analysis. Answers implementation questions by reading code. |
-| `reviewer` | Spec-aware code review via git diff. Structured findings (critical / high / medium / low). |
-| `scout` | Confidence-scored codebase exploration. 5-dimension readiness gate before implementation. Read-only. |
-| `ui-designer` | UI design and component scaffolding. |
-| `wcag-auditor` | WCAG accessibility audit. |
-
----
-
-## Adding a New Agent
-
-Create a `.md` file in `agents/` using the [frontmatter format](#agent-definition-format). The file will be auto-discovered on the next pi session. No registration step required.
-
----
-
-## Adding a New Team
-
-Add an entry to `agents/teams.yaml`:
+Teams are defined in `agents/teams.yaml`. Each entry is a team name mapped to a list of agent names.
 
 ```yaml
-- name: my-team
-  agents:
-    - scout
-    - builder
-    - reviewer
+plan:
+  - scout
+  - planner
+  - documenter
 ```
+
+The Agent Team plugin selects the first team on boot. Use `/agents-team` to switch.
+
+### Available Teams
+
+| Team | Members |
+|---|---|
+| `base` | scout |
+| `info` | scout, browser, documenter, reviewer, negotiator, agent-builder, agent-researcher |
+| `plan` | scout, planner, documenter |
+| `next` | scout, browser, scheduler |
+| `ads` | scout, negotiator, ad-strategist, sales-coach |
+| `plan-build` | scout, conventions-analyst, planner, greenfield-web, brownfield-planner, ui-designer, builder, reviewer, wcag-auditor |
+| `full` | scout, conventions-analyst, planner, builder, reviewer, documenter, scheduler, ad-strategist, negotiator, browser |
+| `brand` | scout, browser, negotiator, ad-strategist, brand-strategist, personal-brand-strategist, documenter, sales-coach, linkedin-coach, brand-psychologist, storybrand |
+| `business` | scout, browser, regulatory-specialist, brand-strategist, financial-modeler, distribution-strategist, trade-marketer, consumer-marketer |
+
+---
+
+## Extensions
+
+Two extensions load automatically from `extensions/` on every pi session.
+
+### `pi-rules.ts`
+
+Scans `rules/*.md` and appends a list of rule file paths to every agent's system prompt. This enforces global conventions across all agents without duplicating content.
+
+### `plugin-loader.ts`
+
+Reads the `PI_PLUGINS` environment variable and dynamically loads the named plugins from `plugins/`.
+
+```bash
+# Load a single plugin
+PI_PLUGINS=agent-team pi
+
+# Load multiple plugins
+PI_PLUGINS=agent-team,my-plugin pi
+```
+
+Each plugin must export a default function that accepts the `ExtensionAPI`. The loader resolves plugins as either `plugins/<name>.ts` or `plugins/<name>/index.ts`.
 
 ---
 
 ## Global Rules
 
-Edit `rules/system-prompt.md`. Changes propagate automatically to all agents via `pi-rules.ts` on the next session.
+Edit `rules/system-prompt.md`. The `pi-rules.ts` extension appends its path to every agent's system prompt automatically. Changes take effect on the next session start; no other configuration is needed.
+
+Current global rules:
+
+- Always start in the current working directory
+- No emdash, endash, or double-hyphen in any output
+
+---
+
+## Skills
+
+The following npm skills are installed via `settings.json`:
+
+| Skill | Role |
+|---|---|
+| `pi-vitals` | System health metrics |
+| `pi-peon-ping` | Basic connectivity check |
+| `@aliou/pi-guardrails` | Safety guardrails |
+| `pi-ask-user-question` | Structured user prompts from agents |
+| `pi-subagents` | Subagent utilities |
+| `pi-updater` | Auto-update support |
+
+---
+
+## Adding Agents and Teams
+
+### Add an agent
+
+Create a `.md` file in `agent/agents/` using the [frontmatter format](#agent-definition-format). The file is auto-discovered on the next session.
+
+### Add a team
+
+Append an entry to `agent/agents/teams.yaml`:
+
+```yaml
+my-team:
+  - scout
+  - builder
+  - reviewer
+```
+
+Switch to it during a session with `/agents-team`.
 
 ---
 
@@ -141,12 +242,7 @@ Edit `rules/system-prompt.md`. Changes propagate automatically to all agents via
 |---|---|
 | [`@mariozechner/pi-coding-agent`](https://github.com/mariozechner/pi) | Base CLI and SDK |
 | `@mariozechner/pi-tui` | Terminal UI library (live grid dashboard) |
-| `@sinclair/typebox` | Runtime JSON schema validation |
-| Anthropic Claude | Default model: `claude-sonnet-4-6` |
+| `@sinclair/typebox` | Runtime JSON schema validation for tool parameters |
+| Anthropic Claude (`claude-sonnet-4-6`) | Default model |
 | Ollama | Optional local model backend (configured in `models.json`) |
-| `pi-vitals` | Skill |
-| `pi-peon-ping` | Skill |
-| `@aliou/pi-guardrails` | Skill |
-| `pi-ask-user-question` | Skill |
-| `@nicknisi/pi-ideation` | Skill |
-| `pi-subagents` | Skill |
+| Node.js `child_process` | Spawns subagents as `pi --mode json` subprocesses |
