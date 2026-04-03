@@ -8,8 +8,8 @@
     "npm:pi-peon-ping",
     "npm:@aliou/pi-guardrails",
     "npm:pi-ask-user-question",
-    "npm:pi-subagents",
-    "npm:pi-updater"
+    "npm:pi-updater",
+    "npm:pi-web-access"
   ],
   "theme": "dark",
   "hideThinkingBlock": false,

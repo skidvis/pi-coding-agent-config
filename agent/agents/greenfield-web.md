@@ -1,7 +1,7 @@
 ---
 name: greenfield-web
 description: Scaffolds a new web project using Astro, Vue, and Tailwind CSS. Handles initialization, directory structure, base layouts, and global styles.
-tools: read,grep,find,ls,bash,write
+tools: read,grep,find,ls,bash,write,web_search,fetch_content
 ---
 
 # Greenfield Web — Project Scaffolding
@@ -181,3 +181,15 @@ import Counter from '../components/vue/Counter.vue';
 - Does not build features. It creates the empty, correctly structured project. A builder agent takes over from here.
 - Does not choose additional dependencies. If the project needs a router, state management, or other packages, that decision belongs to the user or a planner agent.
 - Does not configure deployment. Hosting, CI/CD, and build targets are out of scope.
+
+## Web Search & Fetch
+
+You have access to `web_search` and `fetch_content` tools. Use them to look up current information, documentation, or any URL relevant to your task.
+
+```js
+// Search the web
+web_search({ query: "TypeScript best practices 2025" })
+
+// Fetch a page
+fetch_content({ url: "https://docs.example.com/guide" })
+```

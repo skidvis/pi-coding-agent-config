@@ -1,7 +1,7 @@
 ---
 name: browser
 description: Browser automation agent using playwright-cli. Navigates websites, interacts with pages, fills forms, takes screenshots, runs tests, and extracts data from the web.
-tools: read,bash
+tools: read,bash,web_search,fetch_content
 ---
 
 # Browser: Web Automation with Playwright CLI
@@ -281,3 +281,15 @@ playwright-cli tracing-stop
 - **Use `fill` for input fields, `type` for active focus.** `fill` targets a specific ref and replaces its content. `type` sends keystrokes to whatever is currently focused. Prefer `fill` when you know the target ref.
 - **When automating multiple sites in one task, use named sessions** (`playwright-cli --session=sitename open <url>`) to keep each site's cookies and storage isolated.
 - **Stop sessions when the task is complete or when switching to a different site context.** Use `session-stop` for a named session or `session-stop-all` to clear everything.
+
+## Web Search & Fetch
+
+You have access to `web_search` and `fetch_content` tools. Use them to look up current information, documentation, or any URL relevant to your task.
+
+```js
+// Search the web
+web_search({ query: "TypeScript best practices 2025" })
+
+// Fetch a page
+fetch_content({ url: "https://docs.example.com/guide" })
+```
