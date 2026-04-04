@@ -28,6 +28,16 @@
           "input": [
             "text"
           ]
+        },
+        {
+          "_launch": true,
+          "contextWindow": 131072,
+          "id": "gemma4",
+          "input": [
+            "text",
+            "image"
+          ],
+          "reasoning": true
         }
       ]
     }

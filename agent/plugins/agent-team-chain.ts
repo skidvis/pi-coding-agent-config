@@ -146,6 +146,8 @@ export default function (pi: ExtensionAPI) {
 	let widgetInvalidate: (() => void) | null = null;
 	let sessionDir = "";
 	let tmuxLogFile: string | null = null;
+	let activeChainAgents: string[] = [];
+	let activeChainIndex = -1;
 
 	function initTmuxLogPane(cwd: string) {
 		if (!process.env.TMUX) return;
@@ -311,17 +313,36 @@ export default function (pi: ExtensionAPI) {
 
 					const output = rows.map(cols => cols.join(" ".repeat(gap)));
 
-					// Live status line: show what the running agent is doing
+					// Live status: separator, chain progress, and current agent activity
 					const running = agents.find(a => a.status === "running");
-					if (running && running.lastWork) {
-						const label = displayName(running.def.name);
-						const prefix = theme.fg("accent", `${label}: `);
-						// Reserve space for the label + ": " (approximate visible length)
-						const maxMsg = width - label.length - 2;
-						const msg = running.lastWork.length > maxMsg
-							? running.lastWork.slice(0, maxMsg - 1) + "…"
-							: running.lastWork;
-						output.push(prefix + theme.fg("muted", msg));
+					if (running) {
+						// Separator
+						output.push(theme.fg("dim", "─".repeat(width)));
+
+						// Chain progress line: scout [planner] builder reviewer
+						if (activeChainAgents.length > 0 && activeChainIndex >= 0) {
+							const chainParts = activeChainAgents.map((name, idx) => {
+								const label = displayName(name);
+								if (idx === activeChainIndex) {
+									return theme.fg("accent", theme.bold(`[${label}]`));
+								} else if (idx < activeChainIndex) {
+									return theme.fg("success", label);
+								} else {
+									return theme.fg("dim", label);
+								}
+							});
+							output.push(chainParts.join(theme.fg("dim", " → ")));
+						}
+
+						// Current work
+						if (running.lastWork) {
+							const label = displayName(running.def.name);
+							const maxMsg = width - label.length - 2;
+							const msg = running.lastWork.length > maxMsg
+								? running.lastWork.slice(0, maxMsg - 1) + "…"
+								: running.lastWork;
+							output.push(theme.fg("accent", `${label}: `) + theme.fg("muted", msg));
+						}
 					}
 
 					text.setText(output.join("\n"));
@@ -749,9 +770,16 @@ export default function (pi: ExtensionAPI) {
 			const chainLabel = agentNames.map(n => displayName(n)).join(" → ");
 			ctx.ui.notify(`Chain: ${chainLabel}\nTask: ${task}`, "info");
 
+			activeChainAgents = agentNames;
+			activeChainIndex = 0;
+			updateWidget();
+
 			const results: { agent: string; output: string; exitCode: number; elapsed: number }[] = [];
 
 			for (let i = 0; i < agentNames.length; i++) {
+				activeChainIndex = i;
+				updateWidget();
+
 				const agentName = agentNames[i];
 				const isFirst = i === 0;
 				const stepLabel = `[${i + 1}/${agentNames.length}]`;
@@ -797,6 +825,11 @@ export default function (pi: ExtensionAPI) {
 					}
 				}
 			}
+
+			// Clear chain tracking
+			activeChainAgents = [];
+			activeChainIndex = -1;
+			updateWidget();
 
 			// Summary
 			const summary = results
