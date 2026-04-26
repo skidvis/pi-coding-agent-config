@@ -3,11 +3,11 @@
     "ollama": {
       "api": "openai-completions",
       "apiKey": "ollama",
-      "baseUrl": "http://127.0.0.1:11434/v1",
+      "baseUrl": "http://192.168.86.145:11434/v1",
       "models": [
         {
           "_launch": true,
-          "id": "glm-5:cloud",
+          "id": "glm-5.1:cloud",
           "input": [
             "text"
           ],
@@ -15,7 +15,7 @@
         },
         {
           "_launch": true,
-          "id": "minimax-m2.5:cloud",
+          "id": "kimi-k2.6:cloud",
           "input": [
             "text"
           ],
@@ -32,7 +32,7 @@
         {
           "_launch": true,
           "contextWindow": 131072,
-          "id": "gemma4",
+          "id": "qwen3.6:27b",
           "input": [
             "text",
             "image"

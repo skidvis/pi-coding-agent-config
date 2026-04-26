@@ -1,15 +1,16 @@
 {
-  "defaultModel": "claude-sonnet-4-6",
-  "defaultProvider": "anthropic",
-  "lastChangelogVersion": "0.65.0",
-  "defaultThinkingLevel": "minimal",
+  "defaultModel": "gpt-5.5",
+  "defaultProvider": "openai-codex",
+  "lastChangelogVersion": "0.70.2",
+  "defaultThinkingLevel": "low",
   "packages": [
     "npm:pi-vitals",
     "npm:pi-peon-ping",
     "npm:@aliou/pi-guardrails",
     "npm:pi-ask-user-question",
     "npm:pi-updater",
-    "npm:pi-web-access"
+    "npm:@ollama/pi-web-search",
+    "npm:@ifi/pi-plan"
   ],
   "theme": "dark",
   "hideThinkingBlock": false,

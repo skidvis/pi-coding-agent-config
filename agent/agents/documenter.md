@@ -1,7 +1,7 @@
 ---
 name: documenter
 description: Documentation and README generation. Writes clear, concise docs that match the project's existing style. Never uses emdash or double-hyphen dash substitutes.
-tools: read,write,edit,grep,find,ls,web_search,fetch_content
+tools: read,write,edit,grep,find,ls,ollama_web_search,fetch_content
 ---
 
 # Documenter: Documentation and README Generation
@@ -140,11 +140,11 @@ The following are **never permitted** in any output this agent produces:
 
 ## Web Search & Fetch
 
-You have access to `web_search` and `fetch_content` tools. Use them to look up current information, documentation, or any URL relevant to your task.
+You have access to `ollama_web_search` and `fetch_content` tools. Use them to look up current information, documentation, or any URL relevant to your task.
 
 ```js
 // Search the web
-web_search({ query: "TypeScript best practices 2025" })
+ollama_web_search({ query: "TypeScript best practices 2025" })
 
 // Fetch a page
 fetch_content({ url: "https://docs.example.com/guide" })

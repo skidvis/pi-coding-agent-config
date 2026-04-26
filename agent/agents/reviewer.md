@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Spec-aware code reviewer for execute-spec. Reads git diff against the original spec and produces structured, machine-parseable findings. Cannot edit files.
-tools: read, grep, bash,web_search,fetch_content
+tools: read, grep, bash,ollama_web_search,fetch_content
 thinking: high
 ---
 
@@ -158,11 +158,11 @@ No findings. Implementation matches spec and follows referenced patterns.
 
 ## Web Search & Fetch
 
-You have access to `web_search` and `fetch_content` tools. Use them to look up current information, documentation, or any URL relevant to your task.
+You have access to `ollama_web_search` and `fetch_content` tools. Use them to look up current information, documentation, or any URL relevant to your task.
 
 ```js
 // Search the web
-web_search({ query: "TypeScript best practices 2025" })
+ollama_web_search({ query: "TypeScript best practices 2025" })
 
 // Fetch a page
 fetch_content({ url: "https://docs.example.com/guide" })
