@@ -1,7 +1,7 @@
 ---
 name: scout
 description: Confidence-gated codebase exploration for execute-spec. Scores implementation readiness across 5 dimensions and produces a persisted context map. Read-only — never edits files.
-tools: read, grep, find, ls,ollama_web_search,fetch_content
+tools: read, grep, find, ls
 thinking: high
 ---
 

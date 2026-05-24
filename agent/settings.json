@@ -1,16 +1,16 @@
 {
   "defaultModel": "gpt-5.5",
   "defaultProvider": "openai-codex",
-  "lastChangelogVersion": "0.70.5",
-  "defaultThinkingLevel": "low",
+  "lastChangelogVersion": "0.75.5",
+  "defaultThinkingLevel": "off",
   "packages": [
     "npm:pi-vitals",
     "npm:pi-peon-ping",
     "npm:@aliou/pi-guardrails",
     "npm:pi-ask-user-question",
     "npm:pi-updater",
-    "npm:@ollama/pi-web-search",
-    "npm:@ifi/pi-plan"
+    "npm:@ifi/pi-plan",
+    "npm:@feniix/pi-exa"
   ],
   "theme": "dark",
   "hideThinkingBlock": false,

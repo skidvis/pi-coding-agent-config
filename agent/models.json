@@ -1,43 +1,41 @@
 {
   "providers": {
-    "ollama": {
+    "triton": {
+      "baseUrl": "http://triton:8001/v1",
       "api": "openai-completions",
-      "apiKey": "ollama",
-      "baseUrl": "http://192.168.86.145:11434/v1",
+      "apiKey": "none",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false,
+        "supportsUsageInStreaming": false
+      },
       "models": [
         {
-          "_launch": true,
-          "id": "glm-5.1:cloud",
-          "input": [
-            "text"
-          ],
-          "reasoning": true
+          "id": "Qwen3.6-27B-UD-Q3_K_XL",
+          "name": "Qwen3.6-27B (Triton)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 32768,
+          "maxTokens": 8192,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
         },
         {
-          "_launch": true,
-          "id": "kimi-k2.6:cloud",
-          "input": [
-            "text"
-          ],
-          "reasoning": true
-        },
-        {
-          "_launch": true,
-          "contextWindow": 262144,
-          "id": "qwen3-coder-next:cloud",
-          "input": [
-            "text"
-          ]
-        },
-        {
-          "_launch": true,
-          "contextWindow": 131072,
-          "id": "qwen3.6:27b",
-          "input": [
-            "text",
-            "image"
-          ],
-          "reasoning": true
+          "id": "gemma-4-26B-A4B-it-UD-Q3_K_XL",
+          "name": "Gemma 4 26B (Triton)",
+          "input": ["text", "image"],
+          "contextWindow": 32768,
+          "maxTokens": 8192,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
         }
       ]
     }

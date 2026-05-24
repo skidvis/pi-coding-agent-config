@@ -197,13 +197,21 @@ export default function (pi: ExtensionAPI) {
 
 	function activateTeam(teamName: string) {
 		activeTeamName = teamName;
-		const members = teams[teamName] || [];
 		const defsByName = new Map(allAgentDefs.map(d => [d.name.toLowerCase(), d]));
 
+		// Merge default team members (if any) with the selected team.
+		// Default agents load first so team-specific agents appear after them.
+		// Deduplication happens via the agentStates map key.
+		const defaultMembers = teamName.toLowerCase() !== "default" ? (teams["default"] || []) : [];
+		const teamMembers = teams[teamName] || [];
+		const allMembers = [...defaultMembers, ...teamMembers];
+
 		agentStates.clear();
-		for (const member of members) {
+		for (const member of allMembers) {
 			const def = defsByName.get(member.toLowerCase());
 			if (!def) continue;
+			// Skip if already added (default member also listed in team)
+			if (agentStates.has(def.name.toLowerCase())) continue;
 			const key = def.name.toLowerCase().replace(/\s+/g, "-");
 			const sessionFile = join(sessionDir, `${key}.json`);
 			agentStates.set(def.name.toLowerCase(), {
@@ -649,11 +657,15 @@ export default function (pi: ExtensionAPI) {
 		description: "Select a team to work with",
 		handler: async (_args, ctx) => {
 			widgetCtx = ctx;
-			const teamNames = Object.keys(teams);
+			// Hide "default" from selection — it is always merged in automatically
+			const teamNames = Object.keys(teams).filter(n => n.toLowerCase() !== "default");
 			if (teamNames.length === 0) {
 				ctx.ui.notify("No teams defined in .pi/agents/teams.yaml", "warning");
 				return;
 			}
+
+			const defaultMembers = (teams["default"] || []).map(m => displayName(m));
+			const defaultNote = defaultMembers.length > 0 ? `\n(default agents always included: ${defaultMembers.join(", ")})` : "";
 
 			const options = teamNames.map(name => {
 				const members = teams[name].map(m => displayName(m));
@@ -930,19 +942,28 @@ ${agentCatalog}`,
 		loadAgents(_ctx.cwd);
 		initTmuxLogPane(_ctx.cwd);
 
-		// Default to first team — use /agents-team to switch
-		const teamNames = Object.keys(teams);
+		// Default to first non-default team — use /agents-team to switch
+		const teamNames = Object.keys(teams).filter(n => n.toLowerCase() !== "default");
 		if (teamNames.length > 0) {
 			activateTeam(teamNames[0]);
+		} else if (Object.keys(teams).length > 0) {
+			// Only "default" team exists — activate it directly
+			activateTeam(Object.keys(teams)[0]);
 		}
 
 		// Lock down to dispatcher-only (tool already registered at top level)
 		pi.setActiveTools(["dispatch_agent","askUserQuestion"]);
 
+		const defaultMembers = (teams["default"] || []).map(m => displayName(m));
+		const defaultNote = defaultMembers.length > 0
+			? `Default agents (always active): ${defaultMembers.join(", ")}\n`
+			: "";
+
 		_ctx.ui.setStatus("agent-team", `Team: ${activeTeamName} (${agentStates.size})`);
 		const members = Array.from(agentStates.values()).map(s => displayName(s.def.name)).join(", ");
 		_ctx.ui.notify(
 			`Team: ${activeTeamName} (${members})\n` +
+			defaultNote +
 			`Team sets loaded from: .pi/agents/teams.yaml\n\n` +
 			`/agents-team          Select a team\n` +
 			`/agents-list          List active agents and status\n` +
