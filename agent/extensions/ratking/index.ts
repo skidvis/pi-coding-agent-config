@@ -1,13 +1,12 @@
-// pi2pi — Pi coding agent extension
+// ratking — Pi coding agent extension
 // Bidirectional peer-to-peer agent communication.
 //
-// Install: copy this directory to ~/.pi/agent/extensions/pi2pi/
+// Install: copy this directory to ~/.pi/agent/extensions/ratking/
 // Usage:
 //   Local (same machine):  pi
 //   Network (cross-device): pi --comms-mode net --comms-server http://HOST:4242
-//   Name this agent:        /jcoms name prod
-//   List peers:             /jcoms
-//   Disconnect:             /jcoms disconnect
+//   List peers:             /rats
+//   Disconnect:             /rats disconnect
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
@@ -19,7 +18,7 @@ import type { CommsTransport, PendingMessage } from "./types.ts";
 
 let transport: CommsTransport | null = null;
 let agentId: string | null = null;
-let agentName: string = "agent";
+let agentName: string = "Pinky";
 let commsMode: "local" | "net" = "local";
 let serverUrl: string = "http://localhost:4242";
 
@@ -30,6 +29,19 @@ let pendingResponseResolve: ((text: string) => void) | null = null;
 
 // Poll interval handle
 let pollHandle: ReturnType<typeof setInterval> | null = null;
+
+const AGENT_NAMES = [
+  "Pinky",
+  "Brain",
+  "Remy",
+  "Splinter",
+  "Rizzo",
+  "Ratty",
+  "Templeton",
+  "Rattrap",
+  "Nicodemus",
+  "SilasGreenback",
+];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -52,13 +64,19 @@ function extractAssistantText(messages: unknown[]): string {
   return "";
 }
 
+function selectAgentName(existingCount: number): string {
+  const name = AGENT_NAMES[existingCount];
+  if (name) return name;
+  return `agent-${existingCount + 1}`;
+}
+
 // ─── Extension factory ────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
   // ── Flags ──────────────────────────────────────────────────────────────────
 
   pi.registerFlag("comms-mode", {
-    description: "pi2pi transport: 'local' (same machine) or 'net' (HTTP broker)",
+    description: "ratking transport: 'local' (same machine) or 'net' (HTTP broker)",
     type: "string",
     default: "local",
   });
@@ -69,36 +87,35 @@ export default function (pi: ExtensionAPI) {
     default: "http://localhost:4242",
   });
 
-  pi.registerFlag("comms-name", {
-    description: "Agent display name for the pi2pi pool",
-    type: "string",
-    default: "",
-  });
-
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   pi.on("session_start", async (_event, ctx) => {
     commsMode = (pi.getFlag("comms-mode") as "local" | "net") ?? "local";
     serverUrl = (pi.getFlag("comms-server") as string) ?? "http://localhost:4242";
-    const flagName = (pi.getFlag("comms-name") as string) ?? "";
-
-    // Restore name from persisted session entries
-    for (const entry of ctx.sessionManager.getEntries()) {
-      if (
-        entry.type === "custom" &&
-        (entry as { customType?: string }).customType === "pi2pi-state"
-      ) {
-        const data = (entry as { data?: { name?: string } }).data;
-        if (data?.name) agentName = data.name;
-      }
-    }
-    if (flagName) agentName = flagName;
 
     transport = commsMode === "net"
       ? createNetTransport(serverUrl)
       : createLocalTransport();
 
-    ctx.ui.setStatus("pi2pi", `pi2pi: ${agentName} [${commsMode}] (not connected)`);
+    try {
+      const existingAgents = await transport.listAgents();
+      agentName = selectAgentName(existingAgents.length);
+      agentId = await transport.connect(agentName);
+      pi.setSessionName(`ratking:${agentName}`);
+      ctx.ui.setStatus(
+        "ratking",
+        `ratking: ${agentName} [${commsMode}] ✓ connected (id: ${agentId.slice(0, 8)})`
+      );
+      ctx.ui.notify(
+        `ratking: autojoined as "${agentName}" (id: ${agentId})`,
+        "info"
+      );
+      startPolling(ctx as Parameters<typeof startPolling>[0]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      ctx.ui.setStatus("ratking", `ratking: ${agentName} [${commsMode}] (not connected)`);
+      ctx.ui.notify(`ratking: autojoin failed: ${message}`, "warning");
+    }
   });
 
   pi.on("session_shutdown", async (_event, _ctx) => {
@@ -140,7 +157,7 @@ export default function (pi: ExtensionAPI) {
 
         pendingIncoming = msg;
         ctx.ui.notify(
-          `pi2pi: message from [${msg.fromAgentName}]: ${msg.prompt.slice(0, 60)}${msg.prompt.length > 60 ? "…" : ""}`,
+          `ratking: message from [${msg.fromAgentName}]: ${msg.prompt.slice(0, 60)}${msg.prompt.length > 60 ? "…" : ""}`,
           "info"
         );
 
@@ -148,7 +165,7 @@ export default function (pi: ExtensionAPI) {
         const reply = await new Promise<string>((resolve) => {
           pendingResponseResolve = resolve;
           pi.sendUserMessage(
-            `[pi2pi message from peer "${msg.fromAgentName}"]\n${msg.prompt}`,
+            `[ratking message from peer "${msg.fromAgentName}"]\n${msg.prompt}`,
             { deliverAs: "followUp" }
           );
         });
@@ -158,7 +175,7 @@ export default function (pi: ExtensionAPI) {
         // Silently swallow poll errors — network hiccup, etc.
         const message = err instanceof Error ? err.message : String(err);
         if (!message.includes("timeout")) {
-          ctx.ui.notify(`pi2pi poll error: ${message}`, "warning");
+          ctx.ui.notify(`ratking poll error: ${message}`, "warning");
         }
       }
     }, 2000);
@@ -171,49 +188,32 @@ export default function (pi: ExtensionAPI) {
     }
   }
 
-  // ── /jcoms command ─────────────────────────────────────────────────────────
+  // ── /rats command ──────────────────────────────────────────────────────────
 
-  pi.registerCommand("jcoms", {
-    description: "pi2pi pool control. Usage: /jcoms [N] | name <label> | disconnect | ping <agentId>",
+  pi.registerCommand("rats", {
+    description: "ratking pool control. Usage: /rats [N] | disconnect | ping <agentId>",
     handler: async (args, ctx) => {
       const argv = (args ?? "").trim().split(/\s+/).filter(Boolean);
 
-      // /jcoms disconnect
+      // /rats disconnect
       if (argv[0] === "disconnect") {
         stopPolling();
         if (agentId) {
           if (commsMode === "net") await netDisconnect(serverUrl, agentId);
           else removeAgent(agentId);
           agentId = null;
-          ctx.ui.setStatus("pi2pi", `pi2pi: ${agentName} [${commsMode}] (not connected)`);
-          ctx.ui.notify("pi2pi: disconnected from pool", "info");
+          ctx.ui.setStatus("ratking", `ratking: ${agentName} [${commsMode}] (not connected)`);
+          ctx.ui.notify("ratking: disconnected from pool", "info");
         } else {
-          ctx.ui.notify("pi2pi: not connected", "warning");
+          ctx.ui.notify("ratking: not connected", "warning");
         }
         return;
       }
 
-      // /jcoms name <label>
-      if (argv[0] === "name" && argv[1]) {
-        agentName = argv.slice(1).join(" ");
-        pi.appendEntry("pi2pi-state", { name: agentName });
-        pi.setSessionName(`pi2pi:${agentName}`);
-        ctx.ui.notify(`pi2pi: agent name set to "${agentName}"`, "info");
-        // Reconnect with new name if already connected
-        if (agentId && transport) {
-          const oldId = agentId;
-          if (commsMode === "net") await netDisconnect(serverUrl, oldId);
-          else removeAgent(oldId);
-          agentId = await transport.connect(agentName, oldId);
-          ctx.ui.setStatus("pi2pi", `pi2pi: ${agentName} [${commsMode}] ✓ connected (id: ${agentId.slice(0, 8)})`);
-        }
-        return;
-      }
-
-      // /jcoms ping <agentId>
+      // /rats ping <agentId>
       if (argv[0] === "ping" && argv[1]) {
         if (!transport || !agentId) {
-          ctx.ui.notify("pi2pi: not connected — run /jcoms first", "warning");
+          ctx.ui.notify("ratking: not connected — run /rats first", "warning");
           return;
         }
         const msgId = await transport.send(argv[1], "ping");
@@ -221,31 +221,33 @@ export default function (pi: ExtensionAPI) {
         if (commsMode === "local") {
           patchSenderFields(msgId, agentId, agentName);
         }
-        ctx.ui.notify(`pi2pi: ping sent (msgId: ${msgId.slice(0, 8)})`, "info");
+        ctx.ui.notify(`ratking: ping sent (msgId: ${msgId.slice(0, 8)})`, "info");
         try {
           const reply = await transport.awaitResponse(msgId, 10_000);
-          ctx.ui.notify(`pi2pi: pong from peer: ${reply.slice(0, 80)}`, "info");
+          ctx.ui.notify(`ratking: pong from peer: ${reply.slice(0, 80)}`, "info");
         } catch {
-          ctx.ui.notify("pi2pi: ping timeout — peer may not be listening", "warning");
+          ctx.ui.notify("ratking: ping timeout — peer may not be listening", "warning");
         }
         return;
       }
 
-      // /jcoms or /jcoms <N> — connect / list
+      // /rats or /rats <N> — connect / list
       if (!transport) {
-        ctx.ui.notify("pi2pi: transport not initialised — reload pi", "error");
+        ctx.ui.notify("ratking: transport not initialised — reload pi", "error");
         return;
       }
 
       if (!agentId) {
+        const existingAgents = await transport.listAgents();
+        agentName = selectAgentName(existingAgents.length);
         agentId = await transport.connect(agentName);
-        pi.setSessionName(`pi2pi:${agentName}`);
+        pi.setSessionName(`ratking:${agentName}`);
         ctx.ui.setStatus(
-          "pi2pi",
-          `pi2pi: ${agentName} [${commsMode}] ✓ connected (id: ${agentId.slice(0, 8)})`
+          "ratking",
+          `ratking: ${agentName} [${commsMode}] ✓ connected (id: ${agentId.slice(0, 8)})`
         );
         ctx.ui.notify(
-          `pi2pi: connected as "${agentName}" (id: ${agentId})`,
+          `ratking: connected as "${agentName}" (id: ${agentId})`,
           "info"
         );
         startPolling(ctx as Parameters<typeof startPolling>[0]);
@@ -253,14 +255,14 @@ export default function (pi: ExtensionAPI) {
 
       const agents = await transport.listAgents();
       if (agents.length === 0) {
-        ctx.ui.notify("pi2pi: no agents in pool (you are alone)", "info");
+        ctx.ui.notify("ratking: no agents in pool (you are alone)", "info");
       } else {
         const lines = agents.map(
           (a) =>
             `  ${a.name}${a.id === agentId ? " (you)" : ""} — id: ${a.id.slice(0, 8)}`
         );
         ctx.ui.notify(
-          `pi2pi: ${agents.length} agent(s) in pool:\n${lines.join("\n")}`,
+          `ratking: ${agents.length} agent(s) in pool:\n${lines.join("\n")}`,
           "info"
         );
       }
@@ -271,10 +273,10 @@ export default function (pi: ExtensionAPI) {
 
   pi.registerTool({
     name: "list_agents",
-    label: "List Pi2Pi Agents",
+    label: "List ratking Agents",
     description:
-      "List all agents currently connected to the pi2pi communication pool. Returns each agent's id, name, and connection timestamp.",
-    promptSnippet: "List peers in the pi2pi communication pool",
+      "List all agents currently connected to the ratking communication pool. Returns each agent's id, name, and connection timestamp.",
+    promptSnippet: "List peers in the ratking communication pool",
     promptGuidelines: [
       "Use list_agents before send_to_agent to confirm the target peer is online and to retrieve their id.",
     ],
@@ -283,7 +285,7 @@ export default function (pi: ExtensionAPI) {
     async execute(_id, _params, _signal, _onUpdate, _ctx) {
       if (!transport || !agentId) {
         throw new Error(
-          "pi2pi: not connected to pool. Ask the user to run /jcoms first."
+          "ratking: not connected to pool. Ask the user to run /rats first."
         );
       }
       const agents = await transport.listAgents();
@@ -304,8 +306,8 @@ export default function (pi: ExtensionAPI) {
     name: "send_to_agent",
     label: "Send to Peer Agent",
     description:
-      "Send a prompt to a peer agent in the pi2pi pool. Returns a messageId immediately — the peer agent will process the prompt autonomously. Follow up with await_response to get their reply.",
-    promptSnippet: "Send a prompt to a peer pi2pi agent and get a messageId back",
+      "Send a prompt to a peer agent in the ratking pool. Returns a messageId immediately — the peer agent will process the prompt autonomously. Follow up with await_response to get their reply.",
+    promptSnippet: "Send a prompt to a peer ratking agent and get a messageId back",
     promptGuidelines: [
       "Use send_to_agent to ask a peer agent a question or delegate a task. Always call list_agents first to get the peer's id. Save the returned messageId to pass to await_response.",
       "Never include raw PII in a send_to_agent prompt — instruct the peer to strip or redact sensitive data before returning it.",
@@ -318,14 +320,14 @@ export default function (pi: ExtensionAPI) {
     async execute(_id, params, _signal, _onUpdate, _ctx) {
       if (!transport || !agentId) {
         throw new Error(
-          "pi2pi: not connected to pool. Ask the user to run /jcoms first."
+          "ratking: not connected to pool. Ask the user to run /rats first."
         );
       }
       const agents = await transport.listAgents();
       const target = agents.find((a) => a.id === params.toAgentId);
       if (!target) {
         throw new Error(
-          `pi2pi: agent ${params.toAgentId} not found in pool. Call list_agents to check.`
+          `ratking: agent ${params.toAgentId} not found in pool. Call list_agents to check.`
         );
       }
 
@@ -365,7 +367,7 @@ export default function (pi: ExtensionAPI) {
 
     async execute(_id, params, signal, _onUpdate, _ctx) {
       if (!transport) {
-        throw new Error("pi2pi: not connected to pool.");
+        throw new Error("ratking: not connected to pool.");
       }
       // Respect abort signal via a race
       const timeout = params.timeoutMs ?? 60_000;
@@ -379,7 +381,7 @@ export default function (pi: ExtensionAPI) {
           })),
           new Promise<never>((_, reject) => {
             signal.addEventListener("abort", () =>
-              reject(new Error("pi2pi: await_response aborted"))
+              reject(new Error("ratking: await_response aborted"))
             );
           }),
         ]);
@@ -405,7 +407,7 @@ export default function (pi: ExtensionAPI) {
 
     async execute(_id, params, _signal, _onUpdate, _ctx) {
       if (!transport) {
-        throw new Error("pi2pi: not connected to pool.");
+        throw new Error("ratking: not connected to pool.");
       }
       const response = await transport.pollResponse(params.messageId);
       if (response === null) {

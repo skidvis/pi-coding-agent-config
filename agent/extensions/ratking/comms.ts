@@ -1,12 +1,12 @@
-// pi2pi — local transport (single device, file-based shared queue)
-// All agents on the same machine share /tmp/pi2pi/ as a message store.
+// ratking — local transport (single device, file-based shared queue)
+// All agents on the same machine share /tmp/ratking/ as a message store.
 
 import type { Agent, CommsTransport, PendingMessage } from "./types.ts";
 import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-const STORE_DIR = "/tmp/pi2pi";
+const STORE_DIR = "/tmp/ratking";
 const AGENTS_FILE = join(STORE_DIR, "agents.json");
 const MESSAGES_FILE = join(STORE_DIR, "messages.json");
 
@@ -82,7 +82,7 @@ export function createLocalTransport(): CommsTransport {
         if (msg?.response !== undefined) return msg.response;
         await new Promise((r) => setTimeout(r, 500));
       }
-      throw new Error(`pi2pi: timeout waiting for response to message ${messageId}`);
+      throw new Error(`ratking: timeout waiting for response to message ${messageId}`);
     },
 
     async pollResponse(messageId: string): Promise<string | null> {

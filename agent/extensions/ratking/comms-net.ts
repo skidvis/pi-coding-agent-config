@@ -1,5 +1,5 @@
-// pi2pi — network transport (cross-device, HTTP broker)
-// Connects to the pi2pi-server running on any reachable host.
+// ratking — network transport (cross-device, HTTP broker)
+// Connects to the ratking-server running on any reachable host.
 
 import type { Agent, CommsTransport, PendingMessage } from "./types.ts";
 
@@ -20,7 +20,7 @@ export function createNetTransport(serverUrl: string): CommsTransport {
     });
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(`pi2pi server error ${res.status}: ${text}`);
+      throw new Error(`ratking server error ${res.status}: ${text}`);
     }
     return res.json() as Promise<T>;
   }

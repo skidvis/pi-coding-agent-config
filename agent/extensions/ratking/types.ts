@@ -1,4 +1,4 @@
-// pi2pi — shared types
+// ratking — shared types
 
 export interface Agent {
   id: string;

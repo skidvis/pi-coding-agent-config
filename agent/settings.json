@@ -1,7 +1,7 @@
 {
-  "defaultModel": "gpt-5.5",
-  "defaultProvider": "openai-codex",
-  "lastChangelogVersion": "0.75.5",
+  "defaultModel": "gemma-4-26B-A4B-it-UD-Q3_K_XL",
+  "defaultProvider": "triton",
+  "lastChangelogVersion": "0.78.0",
   "defaultThinkingLevel": "off",
   "packages": [
     "npm:pi-vitals",
@@ -17,5 +17,8 @@
   "skills": [
     ".claude/skills",
     "~/.claude/skills"
+  ],
+  "npmCommand": [
+    "pnpm"
   ]
 }

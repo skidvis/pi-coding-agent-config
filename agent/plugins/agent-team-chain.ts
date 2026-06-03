@@ -95,7 +95,7 @@ function parseAgentFile(filePath: string): AgentDef | null {
 		return {
 			name: frontmatter.name,
 			description: frontmatter.description || "",
-			tools: frontmatter.tools || "read,grep,find,ls",
+			tools: frontmatter.tools || "read,grep,find,ls,ratking",
 			systemPrompt: match[2].trim(),
 			file: filePath,
 		};

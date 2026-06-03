@@ -1,9 +1,9 @@
 ---
-name: pi2pi
+name: ratking
 description: Use this skill when you need to communicate with a peer Pi coding agent — to delegate a task, ask a question, sync data between machines, or coordinate work across agents. Activate when the user asks you to "talk to", "send to", "ask", "ping", or "coordinate with" another agent, or when you need information that a peer agent has access to.
 ---
 
-# Pi2Pi — Peer-to-Peer Agent Communication
+# ratking — Peer-to-Peer Agent Communication
 
 You have tools that let you send messages to other Pi coding agents and receive their replies. Agents are equals — there is no orchestrator. Any agent can initiate communication.
 
